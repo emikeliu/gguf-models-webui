@@ -43,6 +43,32 @@ def load_click(model_name, n_batch, n_thread, n_gpu_layers, n_ctx, progress=gr.P
                   n_gpu_layers=n_gpu_layers)
 
 
+def update_temperature(value, source_temperature):
+    if value == "更有创造力":
+        return gr.Slider(label="温度", minimum=0, maximum=1, step=0.01, value=1)
+    elif value == "平衡":
+        return gr.Slider(label="温度", minimum=0, maximum=1, step=0.01, value=0.5)
+    elif value == "更准确":
+        return gr.Slider(label="温度", minimum=0, maximum=1, step=0.01, value=0)
+    else:
+        return gr.Slider(label="温度", minimum=0, maximum=1, step=0.01, value=source_temperature)
+
+
+def temperature_updated(tmpt):
+    if tmpt == 0:
+        return gr.Radio(choices=["更准确", "平衡", "更有创造力", "自定义"], label="选择输出模式",
+                    value="更准确", interactive=True)
+    elif tmpt == 0.5:
+        return gr.Radio(choices=["更准确", "平衡", "更有创造力", "自定义"], label="选择输出模式",
+                    value="平衡", interactive=True)
+    elif tmpt == 1:
+        return gr.Radio(choices=["更准确", "平衡", "更有创造力", "自定义"], label="选择输出模式",
+                    value="更有创造力", interactive=True)
+    else:
+        return gr.Radio(choices=["更准确", "平衡", "更有创造力", "自定义"], label="选择输出模式",
+                    value="自定义", interactive=True)
+
+
 def offical_load():
     return gr.TextArea(label="系统提示词", lines=6, value="""You are a helpful, respectful and honest INTP-T AI Assistant named Buddy. You are talking to a human User.
 Always answer as helpfully and logically as possible, while being safe. Your answers should not include any harmful, political, religious, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.
@@ -92,6 +118,11 @@ top K 是每次只考虑前 K 个单词
             frequency_penalty = gr.Slider(label="频率惩罚", minimum=-1, maximum=1, step=0.01, value=1)
             repeat_penalty = gr.Slider(label="重复惩罚", minimum=-1, maximum=1, step=0.01, value=1)
             offical.click(offical_load, outputs=[system_prompt])
+
+        output_mode = gr.Radio(choices=["更准确", "平衡", "更有创造力", "自定义"], label="选择输出模式",
+                               value="更有创造力", interactive=True)
+        output_mode.change(update_temperature, inputs=[output_mode, temperature], outputs=[temperature])
+        temperature.change(temperature_updated, inputs=[temperature], outputs=[output_mode])
 
         with gr.Tab("对话") as tab1:
             gr.ChatInterface(fn=buddy, additional_inputs=[system_prompt, max_tokens, temperature, top_k, top_p,
