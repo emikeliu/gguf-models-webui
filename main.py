@@ -26,17 +26,26 @@ def chat(message, history, system, max_tokens, temperature, top_k, top_p, repeat
                          repeat_penalty=repeat_penalty, frequency_penalty=frequency_penalty, stream=True):
                 answer += i['choices'][0]['text']
                 yield answer
-        elif model_type == "使用ChatML的类LLaMA":
+        elif model_type == "使用ChatML的类LLaMA" or model_type == "Qwen":
             answer = ""
             prompt = reduce(deal_system_chatml, history, "<|im_start|>system\n" + system + "<|im_end|>\n")
             prompt += "<|im_start|>user\n" + message + "<|im_end|>\n<|im_start|>assistant"
-            print(prompt)
             for i in llm(prompt, max_tokens=max_tokens, temperature=temperature, top_k=top_k, top_p=top_p,
                          repeat_penalty=repeat_penalty, frequency_penalty=frequency_penalty, stream=True,
                          stop=["<|im_end|>"]):
                 answer += i['choices'][0]['text']
                 yield answer
-        elif model_type == "ChatGLM" or model_type == "Baichuan":
+        elif model_type == "Baichuan":
+            answer = ""
+            prompt = ""
+            for i in history:
+                "<reserved_102> " + history[i][0] + "<reserved_103> " + history[i][1] + "</s>"
+            prompt += "<reserved_102> " + message + "<reserved_103>"
+            for i in llm(prompt, max_tokens=max_tokens, temperature=temperature, top_k=top_k, top_p=top_p,
+                         repeat_penalty=repeat_penalty, frequency_penalty=frequency_penalty, stream=True):
+                answer += i['choices'][0]['text']
+                yield answer
+        elif model_type == "ChatGLM":
             answer = ""
             glm_history = []
             for i in history:
@@ -49,11 +58,6 @@ def chat(message, history, system, max_tokens, temperature, top_k, top_p, repeat
                               repetition_penalty=repeat_penalty, num_threads=n_thread, stream=True):
                 answer += i
                 yield answer
-
-        elif model_type == "Qwen":
-            # TODO :
-            # Qwen support
-            pass
         else:
             # TODO :
             # Auto detection support
@@ -79,8 +83,8 @@ def load_click(model_name, n_batch, n_thread, n_gpu_layers, n_ctx, model_type):
     elif model_type == "Baichuan":
         llm = chatglm_cpp.Pipeline(model_path="models/" + model_name)
     elif model_type == "Qwen":
-        # TODO :
-        # Qwen support
+        llm = Llama(model_path="models/" + model_name, n_ctx=n_ctx, n_threads=n_thread, n_batch=n_batch,
+                    n_gpu_layers=n_gpu_layers)
         pass
     elif model_type == "使用ChatML的类LLaMA":
         llm = Llama(model_path="models/" + model_name, n_ctx=n_ctx, n_threads=n_thread, n_batch=n_batch,
@@ -186,5 +190,3 @@ top K 是每次只考虑前 K 个单词
         load_button.click(load_click, inputs=[models, n_batch, n_thread, n_gpu_layers, n_ctx, model_type])
 
     main.queue().launch()
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
